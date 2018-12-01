@@ -7,8 +7,20 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QCryptographicHash>
-
+#include <QHostAddress>
+#include <QtEndian>
 #include "bencodeparser.h"
+
+typedef struct _PEER_ADDR{
+    quint32 uiIp;
+    quint16 uiPort;
+
+    _PEER_ADDR()
+    {
+        uiIp = 0;
+        uiPort = 0;
+    }
+}PEER_ADDR;
 
 class TrakerCommunicate : public QObject
 {
@@ -34,6 +46,8 @@ private:
 
 private:
     QByteArray getPeerId();
+
+    QList <PEER_ADDR> m_listPeers;
 };
 
 #endif // CTRAKERNETWORK_H

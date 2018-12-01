@@ -21,6 +21,13 @@ QByteArray TrakerCommunicate::getPeerId()
 
 void TrakerCommunicate::commnicateTracker()
 {
+//    QByteArray da("3232235777");
+//    qDebug() << strlen(da.constData());
+//    QHostAddress ad("192.168.1.1");
+
+//    qDebug() << ad.toIPv4Address();
+//    return;
+
     QUrl url = QUrl(m_pBenCodePrase->getAnnounceUrl());
     QUrlQuery query(url);
 
@@ -50,27 +57,12 @@ void TrakerCommunicate::commnicateTracker()
 
     QNetworkRequest req(url);
     m_netManger.get(req);
-
-    qDebug() << "start download " << url.url() << ".....";
-
 }
 
 void TrakerCommunicate::setBenCodeParse(BenCodeParser *bencodPrase)
 {
     m_pBenCodePrase = bencodPrase;
 }
-
-
-//void TrakerCommunicate::httpReadyRead()
-//{
-//    // this slot gets called every time the QNetworkReply has new data.
-//    // We read all of its new data and write it into the file.
-//    // That way we use less RAM than when reading it at the finished()
-//    // signal of the QNetworkReply
-//    m_bData.append(m_pReply->readAll());
-//    m_file.write(m_pReply->readAll());
-//}
-
 
 void TrakerCommunicate::httpFinished(QNetworkReply* reply)
 {
@@ -84,10 +76,37 @@ void TrakerCommunicate::httpFinished(QNetworkReply* reply)
     QByteArray data = reply->readAll();
     qDebug() << data;
 
-//    "d8:completei1552e10:incompletei83e8:intervali1800e5:peers300"
-
     BenCodeParser parse;
     parse.parseTorrentData(data);
 
+    if(parse.getDict().contains("peers"))
+    {
+        QVariant peers = parse.getDict().value("peers");
+
+        if(peers.type() == QVariant::List)
+        {
+
+        }
+        else
+        {
+            QByteArray peerAddrs = peers.toByteArray();
+            for(int i = 0; i < peerAddrs.size(); i += 6)
+            {
+                uchar *p = (uchar*)peerAddrs.constData() + i;
+                //大端字节序
+                PEER_ADDR tmpAddr;
+                tmpAddr.uiIp = qFromBigEndian<quint32>(p);
+                tmpAddr.uiPort = qFromBigEndian<quint16>(p + 4);
+                m_listPeers.append(tmpAddr);
+            }
+        }
+
+
+        for(int j = 0; j < m_listPeers.size(); j++)
+        {
+            qDebug() << m_listPeers.at(j).uiIp << ":" << m_listPeers.at(j).uiPort;
+        }
+        //qDebug() << peers;
+    }
     //解析
 }
