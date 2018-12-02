@@ -1,60 +1,122 @@
 #include "trakercommunicate.h"
-#include "bittorrentserver.h"
+#include "peerserver.h"
 
 TrakerCommunicate::TrakerCommunicate(QObject *parent) : QObject(parent)
 {
     connect(&m_netManger, SIGNAL(finished(QNetworkReply*)), this, SLOT(httpFinished(QNetworkReply*)));
+
+    m_iTimerId = -1;
+    m_bFirstCommnicateWithTracker = true;
+    m_bLastCommnicateWithTracker = false;
+    m_bCompleted = false;
 }
 
 QByteArray TrakerCommunicate::getPeerId()
 {
-    if (m_bPeerId.isEmpty()) {
+    if (m_bytesPeerId.isEmpty()) {
         // Generate peer id
         qint64 startupTime = QDateTime::currentSecsSinceEpoch();
 
-        m_bPeerId.append("QBTPLAYER-");
-        m_bPeerId.append(QByteArray::number(startupTime, 10));
-        m_bPeerId.append(QByteArray(20 - m_bPeerId.size(), '-'));
+        m_bytesPeerId.append("QBTPLAYER-");
+        m_bytesPeerId.append(QByteArray::number(startupTime, 10));
+        m_bytesPeerId.append(QByteArray(20 - m_bytesPeerId.size(), '-'));
     }
-    return m_bPeerId;
+    return m_bytesPeerId;
 }
 
-void TrakerCommunicate::commnicateTracker()
+void TrakerCommunicate::timerEvent(QTimerEvent *event)
 {
-//    QByteArray da("3232235777");
-//    qDebug() << strlen(da.constData());
-//    QHostAddress ad("192.168.1.1");
+    if(event->timerId())
+    {
+//        commnicateTracker();
+    }
+    else
+    {
+        QObject::timerEvent(event);
+    }
+}
 
-//    qDebug() << ad.toIPv4Address();
-//    return;
+void TrakerCommunicate::commnicateWithTracker()
+{
+    QByteArray data;
+    data.append(19);
+    data.append("BitTorrent protocol");
+    data.append("00000000");
+
+    char a = 19;
+
+    qDebug() << data << data.size();
+    return;
 
     QUrl url = QUrl(m_pBenCodePrase->getAnnounceUrl());
     QUrlQuery query(url);
+    bool bCompleted = false;
 
     //添加infoHash
     QByteArray infoHash = QCryptographicHash::hash(m_pBenCodePrase->getInfoSection(), QCryptographicHash::Sha1);
     query.addQueryItem("info_hash", infoHash.toPercentEncoding());
-
     //添加peer_id
     query.addQueryItem("peer_id", getPeerId());
-
     //添加port
-    query.addQueryItem("port", QByteArray::number(BitTorrentServer::instance()->getListenPort()));
+    query.addQueryItem("port", QByteArray::number(PeerServer::instance()->getListenPort()));
+    //接受压缩过的地址
     query.addQueryItem("compact", "1");
 
-    //上传数
+    //每次需要变化
+    /////////////////////////////////////////////////////
+    //上传数:客户端已经上传的总量(从客户端发送’started’事件到Tracker算起)，以十进制ASCII表示。
     query.addQueryItem("uploaded", QByteArray::number(0));
-    //下载数
-    query.addQueryItem("downloaded", "0");
+    //下载数:已下载的字节总量(从客户端发送’started’事件到Tracker算起)，以十进制ASCII表示。
+    query.addQueryItem("downloaded", QByteArray::number(0));
+    //剩余数:客户端还没有下载的字节数，以十进制ASCII表示。
+    query.addQueryItem("left", QByteArray::number(0));
 
-    //剩余数
-    query.addQueryItem("left", "0");
+    //事件,为started(第一个发送到Tracker的请求其event值),
+    //stopped,如果正常关闭客户端，必须发送改事件到Tracker。
+    //completed,完事发送。如果客户端启动之前，已经下载完成的话，则没有必要发送该事件
+    //空(不指定).如果一个请求不指定event，表明它只是每隔一定间隔发送的请求。
+    if(m_bFirstCommnicateWithTracker)
+    {
+        //如果剩余的下载字节为0,则m_bFristSeeding
+        if("已经下载完")
+        {
+            m_bCompleted = true;
+        }
+    }
 
-    //事件,为started, stopped, completed
-    query.addQueryItem("event", "started");
+    if("已经下载完")
+        bCompleted = true;
+    else
+        bCompleted = false;
+
+    //下载完,并且不是第一次下载完则发送completed
+    if(!m_bCompleted && bCompleted)//只发一次,完成时候发送
+    {
+        m_bCompleted = true;
+        query.addQueryItem("event", "completed");
+
+        qDebug() << "下载完成(启动后!)";
+    }
+    else if(m_bFirstCommnicateWithTracker)
+    {
+        m_bFirstCommnicateWithTracker = false;
+        query.addQueryItem("event", "started");
+    }
+    else if(m_bLastCommnicateWithTracker)
+    {
+        query.addQueryItem("event", "stopped");
+    }
+    else
+    {
+        //event is null
+    }
+
+    //如果之前的announce包含一个tracker id，那么当前的请求必须设置该参数。
+    if (!m_bytesTrackerId.isEmpty())
+        query.addQueryItem("trackerid", m_bytesTrackerId);
+    /////////////////////////////////////////////////////
 
     url.setQuery(query);
-
     QNetworkRequest req(url);
     m_netManger.get(req);
 }
@@ -62,6 +124,11 @@ void TrakerCommunicate::commnicateTracker()
 void TrakerCommunicate::setBenCodeParse(BenCodeParser *bencodPrase)
 {
     m_pBenCodePrase = bencodPrase;
+}
+
+QList<PEER_ADDR> TrakerCommunicate::getPeerList()
+{
+    return m_listPeers;
 }
 
 void TrakerCommunicate::httpFinished(QNetworkReply* reply)
@@ -73,21 +140,67 @@ void TrakerCommunicate::httpFinished(QNetworkReply* reply)
         return;
     }
 
+    //读取Tracker返回值
     QByteArray data = reply->readAll();
-    qDebug() << data;
 
+    //解析数据
     BenCodeParser parse;
-    parse.parseTorrentData(data);
-
-    if(parse.getDict().contains("peers"))
+    BenDictionary dict;
+    if(!parse.parseTorrentData(data))
     {
-        QVariant peers = parse.getDict().value("peers");
+        qDebug() << "解析返回值失败!";
+        return;
+    }
 
+    dict = parse.getDict();
+    if(dict.contains("failure reason"))
+    {
+        qDebug() << dict.value("failure reason");
+        return;
+    }
+
+    if (dict.contains("warning message"))
+    {
+        // continue processing
+        qDebug() << dict.value("warning message");
+    }
+
+    if(dict.contains("trackerId"))
+    {
+        m_bytesTrackerId = dict.value("tracker id").toByteArray();
+    }
+
+    if(dict.contains("interval"))
+    {
+        if(m_iTimerId != -1)
+        {
+            killTimer(m_iTimerId);
+        }
+        m_iTimerId = startTimer(dict.value("interval").toInt() * 1000);
+    }
+
+    if(dict.contains("peers"))
+    {
+        //清空连接队列
+        m_listPeers.clear();
+
+        QVariant peers = dict.value("peers");
+
+        //字典模式
         if(peers.type() == QVariant::List)
         {
-
+            QList<QVariant> peerTmp = peers.toList();
+            for (int i = 0; i < peerTmp.size(); i++)
+            {
+                PEER_ADDR tmpAddr;
+                BenDictionary peer = qvariant_cast<BenDictionary>(peerTmp.at(i));
+                tmpAddr.bPeerId = peer.value("peer id").toByteArray();
+                tmpAddr.stPeerAddr.setAddress(QString::fromUtf8(peer.value("ip").toByteArray()));
+                tmpAddr.uiPort = peer.value("port").toInt();
+                m_listPeers.append(tmpAddr);
+            }
         }
-        else
+        else//二进制模式
         {
             QByteArray peerAddrs = peers.toByteArray();
             for(int i = 0; i < peerAddrs.size(); i += 6)
@@ -95,18 +208,10 @@ void TrakerCommunicate::httpFinished(QNetworkReply* reply)
                 uchar *p = (uchar*)peerAddrs.constData() + i;
                 //大端字节序
                 PEER_ADDR tmpAddr;
-                tmpAddr.uiIp = qFromBigEndian<quint32>(p);
+                tmpAddr.stPeerAddr.setAddress(qFromBigEndian<quint32>(p));
                 tmpAddr.uiPort = qFromBigEndian<quint16>(p + 4);
                 m_listPeers.append(tmpAddr);
             }
         }
-
-
-        for(int j = 0; j < m_listPeers.size(); j++)
-        {
-            qDebug() << m_listPeers.at(j).uiIp << ":" << m_listPeers.at(j).uiPort;
-        }
-        //qDebug() << peers;
     }
-    //解析
 }

@@ -58,7 +58,7 @@ private:
     BenDictionary m_dictTorrent;
     qint64 m_iDataLen;
     qint64 m_iCurrentIndex;
-    QByteArray m_bData;
+    QByteArray m_bytesData;
     QString m_szErrorString;
 
     qint64 m_iInfoSectionStart;

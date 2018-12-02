@@ -27,7 +27,7 @@ bool BenCodeParser::setTorrentFile(QString szFileName)
 
 bool BenCodeParser::parseInteger(qint64 *iInterger)
 {
-    if(m_bData.at(m_iCurrentIndex) != 'i')
+    if(m_bytesData.at(m_iCurrentIndex) != 'i')
         return false;
 
     qint64 iDigtial = 0;
@@ -37,21 +37,21 @@ bool BenCodeParser::parseInteger(qint64 *iInterger)
     int iSign = 1;
     while(m_iCurrentIndex < m_iDataLen)
     {
-        if(m_bData.at(m_iCurrentIndex) == 'e')
+        if(m_bytesData.at(m_iCurrentIndex) == 'e')
         {
             m_iCurrentIndex++;
             break;
         }
 
         //负数时
-        if((iSign == 1) && (m_bData.at(m_iCurrentIndex) == '-'))
+        if((iSign == 1) && (m_bytesData.at(m_iCurrentIndex) == '-'))
         {
             qDebug() << "negative number";
             iSign = -1;
             m_iCurrentIndex++;
 
             //-0为异常情况
-            if(m_bData.at(m_iCurrentIndex) == '0')
+            if(m_bytesData.at(m_iCurrentIndex) == '0')
             {
                 m_szErrorString = QString("Integer Parse Error at %1 cause -0").arg(m_iCurrentIndex);
                 qDebug() << m_szErrorString;
@@ -59,8 +59,8 @@ bool BenCodeParser::parseInteger(qint64 *iInterger)
             }
         }
 
-        if(m_bData.at(m_iCurrentIndex) >= '0' && m_bData.at(m_iCurrentIndex) <= '9')
-            iDigtial = iDigtial * 10 + (m_bData.at(m_iCurrentIndex) - '0');
+        if(m_bytesData.at(m_iCurrentIndex) >= '0' && m_bytesData.at(m_iCurrentIndex) <= '9')
+            iDigtial = iDigtial * 10 + (m_bytesData.at(m_iCurrentIndex) - '0');
         else
             return false;
         m_iCurrentIndex++;
@@ -77,20 +77,20 @@ bool BenCodeParser::parseString(QByteArray *bString)
 
     while(m_iCurrentIndex < m_iDataLen)
     {
-        if(m_bData.at(m_iCurrentIndex) == ':')
+        if(m_bytesData.at(m_iCurrentIndex) == ':')
         {
             m_iCurrentIndex++;
             break;
         }
 
-        if(m_bData.at(m_iCurrentIndex) >= '0' && m_bData.at(m_iCurrentIndex) <= '9')
-            iDigtial = iDigtial * 10 + (m_bData.at(m_iCurrentIndex) - '0');
+        if(m_bytesData.at(m_iCurrentIndex) >= '0' && m_bytesData.at(m_iCurrentIndex) <= '9')
+            iDigtial = iDigtial * 10 + (m_bytesData.at(m_iCurrentIndex) - '0');
         else
             return false;
         m_iCurrentIndex++;
     }
 
-    *bString = m_bData.mid(m_iCurrentIndex, iDigtial);
+    *bString = m_bytesData.mid(m_iCurrentIndex, iDigtial);
     m_iCurrentIndex += iDigtial;
 
     return true;
@@ -98,7 +98,7 @@ bool BenCodeParser::parseString(QByteArray *bString)
 
 bool BenCodeParser::parseList(QList<QVariant> *list)
 {
-    if(m_bData.at(m_iCurrentIndex) != 'l')
+    if(m_bytesData.at(m_iCurrentIndex) != 'l')
         return false;
 
     m_iCurrentIndex++;
@@ -107,7 +107,7 @@ bool BenCodeParser::parseList(QList<QVariant> *list)
 
     while(m_iCurrentIndex < m_iDataLen)
     {
-        if(m_bData.at(m_iCurrentIndex) == 'e')
+        if(m_bytesData.at(m_iCurrentIndex) == 'e')
         {
             m_iCurrentIndex++;
             break;
@@ -150,7 +150,7 @@ bool BenCodeParser::parseList(QList<QVariant> *list)
 
 bool BenCodeParser::parseDictionary(BenDictionary *dict)
 {
-    if(m_bData.at(m_iCurrentIndex) != 'd')
+    if(m_bytesData.at(m_iCurrentIndex) != 'd')
         return false;
 
     BenDictionary tempDict;
@@ -159,7 +159,7 @@ bool BenCodeParser::parseDictionary(BenDictionary *dict)
 
     while(m_iCurrentIndex < m_iDataLen)
     {
-        if(m_bData.at(m_iCurrentIndex) == 'e')
+        if(m_bytesData.at(m_iCurrentIndex) == 'e')
         {
             m_iCurrentIndex++;
             break;
@@ -218,7 +218,7 @@ bool BenCodeParser::parseTorrentData(const QByteArray data)
 
     m_iCurrentIndex = 0;
     m_iDataLen = data.size();
-    m_bData = data;
+    m_bytesData = data;
     m_iInfoSectionStart = 0;
     m_iInfoSectionLength = 0;
 
@@ -232,7 +232,7 @@ BenDictionary BenCodeParser::getDict()
 
 QByteArray BenCodeParser::getInfoSection()
 {
-    return m_bData.mid(m_iInfoSectionStart, m_iInfoSectionLength);
+    return m_bytesData.mid(m_iInfoSectionStart, m_iInfoSectionLength);
 }
 
 QString BenCodeParser::getErrorString()

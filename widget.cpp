@@ -11,7 +11,7 @@ Widget::Widget(QWidget *parent) :
 
     TrakerCommunicate *com = new TrakerCommunicate;
     com->setBenCodeParse(&bencode);
-    com->commnicateTracker();
+    com->commnicateWithTracker();
     bencode.getFileInfoSection(nullptr);
 }
 

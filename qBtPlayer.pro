@@ -28,13 +28,17 @@ SOURCES += \
         widget.cpp \
     bencodeparser.cpp \
     trakercommunicate.cpp \
-    bittorrentserver.cpp
+    peerserver.cpp \
+    peerclient.cpp \
+    peerwireprotocal.cpp
 
 HEADERS += \
         widget.h \
     bencodeparser.h \
     trakercommunicate.h \
-    bittorrentserver.h
+    peerserver.h \
+    peerclient.h \
+    peerwireprotocal.h
 
 FORMS += \
         widget.ui
