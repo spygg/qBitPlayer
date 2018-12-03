@@ -29,16 +29,14 @@ SOURCES += \
     bencodeparser.cpp \
     trakercommunicate.cpp \
     peerserver.cpp \
-    peerclient.cpp \
-    peerwireprotocal.cpp
+    peerclient.cpp
 
 HEADERS += \
         widget.h \
     bencodeparser.h \
     trakercommunicate.h \
     peerserver.h \
-    peerclient.h \
-    peerwireprotocal.h
+    peerclient.h
 
 FORMS += \
         widget.ui

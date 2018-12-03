@@ -9,11 +9,9 @@
 #include <QHostAddress>
 #include <QTimerEvent>
 #include "bencodeparser.h"
+#include "peerclient.h"
 
-
-//#include <QEventLoop>
-//#include <QFile>
-#include <QTcpSocket>
+//#include <QTcpSocket>
 
 
 typedef struct _PEER_ADDR{
@@ -54,6 +52,8 @@ private:
     bool m_bFirstCommnicateWithTracker;
     bool m_bLastCommnicateWithTracker;
     bool m_bCompleted;
+
+    QByteArray m_bytesInfoHash;
 };
 
 #endif // CTRAKERNETWORK_H

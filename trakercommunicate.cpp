@@ -36,16 +36,33 @@ void TrakerCommunicate::timerEvent(QTimerEvent *event)
     }
 }
 
+static inline void toNetworkData(quint32 num, char *data)
+{
+    unsigned char *udata = (unsigned char *)data;
+    udata[3] = (num & 0xff);
+    udata[2] = (num & 0xff00) >> 8;
+    udata[1] = (num & 0xff0000) >> 16;
+    udata[0] = (num & 0xff000000) >> 24;
+}
+
+//typedef struct _PEER_WIRE_MSG
+//{
+//    char szLen[4];
+//    unsigned char byteMsgId;
+//    unsigned char* bytesPayload;
+//}PEER_WIRE_MSG;
+
 void TrakerCommunicate::commnicateWithTracker()
 {
-    QByteArray data;
-    data.append(19);
-    data.append("BitTorrent protocol");
-    data.append("00000000");
+    char szD[4] = {0};
+    toNetworkData(33, szD);
+    qToBigEndian<quint32>(33, szD);
 
-    char a = 19;
+    PEER_WIRE_MSG msg;
+    msg.bytesPayload = (unsigned char*)malloc(sizeof(33));
+    qToBigEndian<quint32>(33, msg.bytesPayload);
 
-    qDebug() << data << data.size();
+    qDebug() << (int)szD[3] << (int)szD[2] << (int)szD[1] << (int)szD[0] << msg.bytesPayload[3];
     return;
 
     QUrl url = QUrl(m_pBenCodePrase->getAnnounceUrl());
@@ -53,8 +70,8 @@ void TrakerCommunicate::commnicateWithTracker()
     bool bCompleted = false;
 
     //添加infoHash
-    QByteArray infoHash = QCryptographicHash::hash(m_pBenCodePrase->getInfoSection(), QCryptographicHash::Sha1);
-    query.addQueryItem("info_hash", infoHash.toPercentEncoding());
+    m_bytesInfoHash = QCryptographicHash::hash(m_pBenCodePrase->getInfoSection(), QCryptographicHash::Sha1);
+    query.addQueryItem("info_hash", m_bytesInfoHash.toPercentEncoding());
     //添加peer_id
     query.addQueryItem("peer_id", getPeerId());
     //添加port
@@ -213,5 +230,16 @@ void TrakerCommunicate::httpFinished(QNetworkReply* reply)
                 m_listPeers.append(tmpAddr);
             }
         }
+    }
+    else
+    {
+        return;
+    }
+
+    for(int i = 0; i < 1; i++)
+    {
+        PeerClient *client = new PeerClient(this);
+        client->init(m_bytesInfoHash, m_bytesPeerId);
+        client->connect2Host(m_listPeers.at(i).stPeerAddr, m_listPeers.at(i).uiPort);
     }
 }
