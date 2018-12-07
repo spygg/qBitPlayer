@@ -44,6 +44,9 @@ private:
     void sendNotInterested();
     void sendHave(quint32 uiIndex);
     void sendBitfield(QBitArray bitField);
+    void sendRequest(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
+    void sendPiece(quint32 uiIndex, quint32 uiBegin, qint32 uiBlock);
+    void sendCancel(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
 };
 
 #endif // PEERCOMMUNICATE_H

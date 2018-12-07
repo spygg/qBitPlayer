@@ -55,35 +55,35 @@ void PeerClient::sendKeepAlive()
 void PeerClient::sendChoke()
 {
     //choke: <len=0001><id=0>
-    const char message[] = {0, 0, 0, 1, 0};
+    const char message[5] = {0, 0, 0, 1};
     write(message, sizeof(message));
 }
 
 void PeerClient::sendUnchoke()
 {
     //Unchoke: <len=0001><id=1>
-    const char message[] = {0, 0, 0, 1, 1};
+    const char message[5] = {0, 0, 0, 1, 1};
     write(message, sizeof(message));
 }
 
 void PeerClient::sendInterested()
 {
     //Interested: <len=0001><id=2>
-    const char message[] = {0, 0, 0, 1, 2};
+    const char message[5] = {0, 0, 0, 1, 2};
     write(message, sizeof(message));
 }
 
 void PeerClient::sendNotInterested()
 {
     //NotInterested: <len=0001><id=3>
-    const char message[] = {0, 0, 0, 1, 3};
+    const char message[5] = {0, 0, 0, 1, 3};
     write(message, sizeof(message));
 }
 
 void PeerClient::sendHave(quint32 uiIndex)
 {
     //have: <len=0005><id=4><piece index>
-    char message[] = {0, 0, 0, 5, 4, 0, 0, 0, 0};
+    char message[9] = {0, 0, 0, 5, 4};
 
     qToBigEndian<quint32>(uiIndex, &message[5]);
     write(message, sizeof(message));
@@ -92,27 +92,62 @@ void PeerClient::sendHave(quint32 uiIndex)
 void PeerClient::sendBitfield(QBitArray bitField)
 {
     //bitfield: <len=0001+X><id=5><bitfield>
-
-    // Don't send the bitfield if it's all zeros.
     if (bitField.count(true) == 0)
         return;
 
+    //不足一个字节的补0
     int size = (bitField.size() + 7) / 8;
     QByteArray data(size, '\0');
 
     char message[] = {0, 0, 0, 1, 5};
     qToBigEndian<quint32>(bitField.size() + 1, &message[0]);
 
-    //对bitfield进行整理
-    //如果对应的bit位为1,则data的对应字节也为1
+    //first byte of the bitfield corresponds to indices 0 - 7 from high bit to low bit
     for(int i = 0; i < bitField.size(); i++)
     {
-        data[i] = bitField.testBit(i);
-//        if()
+        if(bitField.testBit(i))
+        {
+            data[i / 8] = data.at(i / 8) | (uchar)(1 << (7 - i % 8));
+        }
     }
 
     write(message, sizeof(message));
     write(data);
+}
+
+void PeerClient::sendRequest(quint32 uiIndex, quint32 uiBegin, qint32 uiLength)
+{
+    // request: <len=0013><id=6><index><begin><length>
+    char message[17] = {0, 0, 0, 13, 6};
+
+    qToBigEndian<quint32>(uiIndex, &message[5]);
+    qToBigEndian<quint32>(uiBegin, &message[9]);
+    qToBigEndian<quint32>(uiLength, &message[13]);
+    write(message, sizeof(message));
+}
+
+void PeerClient::sendPiece(quint32 uiIndex, quint32 uiBegin, qint32 uiBlock)
+{
+    // piece: <len=0009+X><id=7><index><begin><block>
+    char message[] = {0, 0, 0, 0, 7};
+    qToBigEndian<quint32>(9 + 1, &message[0]);
+//    qToBigEndian<quint32>(uiIndex, &message[5]);
+//    qToBigEndian<quint32>(uiBegin, &message[9]);
+//    qToBigEndian<quint32>(uiLength, &message[13]);
+    write(message, sizeof(message));
+
+
+}
+
+void PeerClient::sendCancel(quint32 uiIndex, quint32 uiBegin, qint32 uiLength)
+{
+    // cancel: <len=0013><id<=8><index><begin><length>
+    char message[17] = {0, 0, 0, 13, 8};
+
+    qToBigEndian<quint32>(uiIndex, &message[5]);
+    qToBigEndian<quint32>(uiBegin, &message[9]);
+    qToBigEndian<quint32>(uiLength, &message[13]);
+    write(message, sizeof(message));
 }
 
 void PeerClient::readyReadSlot()

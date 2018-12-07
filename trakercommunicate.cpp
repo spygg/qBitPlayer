@@ -54,6 +54,42 @@ static inline void toNetworkData(quint32 num, char *data)
 
 void TrakerCommunicate::commnicateWithTracker()
 {
+    QBitArray bitField(17);
+
+    bitField[10] = 1;
+    bitField[9] = 1;
+    bitField[6] = 1;
+
+
+    qDebug() << bitField;
+    int size = (bitField.size() + 7) / 8;
+    QByteArray data(size, '\0');
+
+    char message[] = {0, 0, 0, 1, 5};
+    qToBigEndian<quint32>(bitField.size() + 1, &message[0]);
+
+    //first byte of the bitfield corresponds to indices 0 - 7 from high bit to low bit
+    //0000 0001 0000 0000
+    //7654 3210
+    // data[0]   data[1]
+    //按位或
+    unsigned char uc = 0;
+    for(int i = 0; i < bitField.size(); i++)
+    {
+        if(bitField.testBit(i))
+        {
+            data[i / 8] = data.at(i / 8) | (unsigned char)(1 << (7 - i % 8));
+        }
+        // |= (bitField.testBit(i) << (7 - i % 8));
+    }
+
+    for(int i = 0; i < data.size(); i++)
+    {
+        qDebug() << (unsigned char)data.at(i);
+    }
+    //qDebug() << data;
+    return;
+
     char szD[4] = {0};
     toNetworkData(33, szD);
     qToBigEndian<quint32>(33, szD);
