@@ -45,8 +45,10 @@ private:
     void sendHave(quint32 uiIndex);
     void sendBitfield(QBitArray bitField);
     void sendRequest(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
-    void sendPiece(quint32 uiIndex, quint32 uiBegin, qint32 uiBlock);
+    void sendPiece(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlcok);
     void sendCancel(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
+    void sendPort(quint16 uiPort);
+
 };
 
 #endif // PEERCOMMUNICATE_H
