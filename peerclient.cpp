@@ -2,7 +2,9 @@
 
 PeerClient::PeerClient(QObject *parent):QTcpSocket(parent)
 {
-    m_bShaked = false;
+    m_bSendShake = false;
+    m_bRecvivedHandShake = false;
+    m_iNextPackLen = -1;
 }
 
 void PeerClient::init(QByteArray bytesInfoHash, QByteArray bytesClientId)
@@ -18,21 +20,29 @@ void PeerClient::connect2Host(QHostAddress stAddr, qint16 uiPort)
     connectToHost(stAddr, uiPort);
 }
 
-//握手消息
+//握手消息,长度为68
 void PeerClient::handShake()
 {
+    if(m_bSendShake)
+    {
+        qDebug() << "已经发送过握手消息!";
+        return;
+    }
+
     //握手： <pstrlen><pstr><reserved><info_hash><peer_id>
     //注意: 其中的info_hash和发送给Tracker的不同,这里为原始不%号化的原始值
     QByteArray data;
     data.append(19);
     data.append("BitTorrent protocol");
-    data.append("00000000");
+    data.append(8, 0);
 
     data.append(m_bytesInfoHash);
     data.append(m_bytesClientId);
 
-    qDebug() << "发送握手消息" << data.size() << m_bytesClientId.size() << m_bytesInfoHash.size();
+    qDebug() << "发送握手消息" << data << data.size();
     write(data);
+
+    m_bSendShake = true;
 }
 
 
@@ -125,7 +135,13 @@ void PeerClient::sendBitfield(QBitArray bitField)
     write(data);
 }
 
-/*
+/* index是piece的索引，begin是piece内的偏移，length是请求peer发送的数据的长度。当客户端收到某个peer发来的unchoke消息后，即构造request消息，
+ * 向该peer发送数据请求。前面提到，peer之间交换数据是以slice（长度为16KB的块）为单位的，
+ * 因此request消息中length的值一般为16K。对于一个256KB的piece，客户端分16次下载，每次下载一个16K的slice。
+ *
+ *  每一次请求是一个块
+ *  每一次请求是一个块
+ *
  * 'request' messages contain an index, begin, and length. The last two are byte offsets.
  *  Length is generally a power of two unless it gets truncated by the end of the file.
  *  All current implementations use 2^14 (16 kiB), and close connections which request an amount greater than that
@@ -142,11 +158,13 @@ void PeerClient::sendRequest(quint32 uiIndex, quint32 uiBegin, qint32 uiLength)
 }
 
 /*
+ * 注意原始规范在描述⽤⼾协议时也使⽤术语“⽚断”，但与元信息⽂件中的术语“⽚断”不同。
+ * 由于该原因，术语“块”将在本规范中⽤来描述⽤⼾之间通过线路交换的数据
  * piece' messages contain an index, begin, and piece. Note that they are correlated with request messages implicitly.
  *  It's possible for an unexpected piece to arrive if choke and unchoke messages are sent in quick succession
  * and/or transfer is going very slowly
 */
-void PeerClient::sendPiece(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlcok)
+void PeerClient::sendBlock(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlcok)
 {
     // piece: <len=0009+X><id=7><index><begin><block>
     char message[13] = {0, 0, 0, 0, 7};
@@ -161,11 +179,11 @@ void PeerClient::sendPiece(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlc
 
 /*
  * 'cancel' messages have the same payload as request messages. They are generally only sent towards the end of a download,
- *  during what's called 'endgame mode'. When a download is almost complete, there's a tendency for the last few pieces
+ * during what's called 'endgame mode'. When a download is almost complete, there's a tendency for the last few pieces
  * to all be downloaded off a single hosed modem line, taking a very long time. To make sure the last few pieces
  * come in quickly, once requests for all pieces a given downloader doesn't have yet are currently pending,
  * it sends requests for everything to everyone it's downloading from. To keep this from becoming horribly inefficient,
- *  it sends cancels to everyone else every time a piece arrives.
+ * it sends cancels to everyone else every time a piece arrives.
 */
 void PeerClient::sendCancel(quint32 uiIndex, quint32 uiBegin, qint32 uiLength)
 {
@@ -189,5 +207,99 @@ void PeerClient::sendPort(quint16 uiPort)
 
 void PeerClient::readyReadSlot()
 {
-    qDebug() << this->readAll();
+    if(!m_bRecvivedHandShake)
+    {
+        if(bytesAvailable() >= 68)
+        {
+            qDebug() << read(68);
+//            int iLen = read(1).toInt();
+//            qDebug() << iLen << read(iLen) << read(8);
+
+//            qDebug() << "info_hash:" << read(20) << "peerId:" << read(20);
+            m_bRecvivedHandShake = true;
+        }
+
+    }
+    else
+    {
+        //<4字节⻓前缀><消息标识符><有效负载>
+        //qDebug() << qFromBigEndian<qint32>(data) << "消息ID" << (quint8)data.at(4) << data;
+        if(bytesAvailable() < 4)
+        {
+            return;
+        }
+
+        if(m_iNextPackLen == -1)
+        {
+            char szLen[4] = {0};
+            read(szLen, sizeof(szLen));
+            m_iNextPackLen = qFromBigEndian<qint32>(szLen);
+        }
+
+        if(bytesAvailable() < m_iNextPackLen)
+        {
+            return;
+        }
+
+        QByteArray data = read(m_iNextPackLen);
+
+        m_iNextPackLen = -1;
+
+        switch (data.at(0)) {
+        case eChoke:
+            {
+                qDebug() << "接收到消息:eChoke";
+            }
+            break;
+        case eUnchoke:
+            {
+                qDebug() << "接收到消息:eUnchoke";
+            }
+            break;
+        case eInterested:
+            {
+                qDebug() << "接收到消息:eInterested";
+            }
+            break;
+        case eNotInterested:
+            {
+                qDebug() << "接收到消息:eNotInterested";
+            }
+            break;
+        case eHave:
+            {
+                qDebug() << "接收到消息:eHave";
+            }
+            break;
+        case eBitfield:
+            {
+                qDebug() << "接收到消息:eBitfield";
+            }
+            break;
+        case eRequest:
+            {
+                qDebug() << "接收到消息:eRequest";
+            }
+            break;
+        case ePiece:
+            {
+                qDebug() << "接收到消息:ePiece";
+            }
+            break;
+        case eCancel:
+            {
+                qDebug() << "接收到消息:eCancel";
+            }
+            break;
+        case ePort:
+            {
+                qDebug() << "接收到消息:ePort";
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+
 }

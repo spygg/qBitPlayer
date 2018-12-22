@@ -2,8 +2,10 @@
 #define WIDGET_H
 
 #include <QWidget>
-#include "bencodeparser.h"
-#include "trakercommunicate.h"
+//#include "bencodeparser.h"
+//#include "trakercommunicate.h"
+#include "downloadmanager.h"
+
 
 namespace Ui {
 class Widget;
@@ -19,6 +21,8 @@ public:
 
 private:
     Ui::Widget *ui;
+
+    DownloadManager *m_pDownloadMan;
 };
 
 #endif // WIDGET_H

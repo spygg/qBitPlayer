@@ -9,10 +9,23 @@
 
 typedef struct _PEER_WIRE_MSG
 {
-    char szLen[4];
+    quint32 iLen;
     unsigned char byteMsgId;
-    unsigned char* bytesPayload;
+    QByteArray bytesData;
 }PEER_WIRE_MSG;
+
+enum eMsgType{
+    eChoke,
+    eUnchoke,
+    eInterested,
+    eNotInterested,
+    eHave,
+    eBitfield = 5,
+    eRequest,
+    ePiece,
+    eCancel,
+    ePort
+};
 
 //本类用来完成发送信息给peer
 //使用的协议为peerWire 协议
@@ -33,8 +46,9 @@ private slots:
 private:
     QByteArray m_bytesInfoHash;
     QByteArray m_bytesClientId;
-    bool m_bShaked;
-
+    bool m_bSendShake;
+    bool m_bRecvivedHandShake;
+    qint32 m_iNextPackLen;
 private:
 //    void sendData();
     void sendKeepAlive();
@@ -45,7 +59,7 @@ private:
     void sendHave(quint32 uiIndex);
     void sendBitfield(QBitArray bitField);
     void sendRequest(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
-    void sendPiece(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlcok);
+    void sendBlock(quint32 uiIndex, quint32 uiBegin, QByteArray bytesBlcok);
     void sendCancel(quint32 uiIndex, quint32 uiBegin, qint32 uiLength);
     void sendPort(quint16 uiPort);
 

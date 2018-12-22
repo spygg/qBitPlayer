@@ -22,7 +22,7 @@ typedef struct _SINGLE_FILE_INFO
 typedef struct _FILE_INFO
 {
     qint64 iPieceLength;
-    QByteArray bPieces;
+    QByteArray bytesPieces;
     QString szFolderName;
 
     QList <SINGLE_FILE_INFO> lFileList;

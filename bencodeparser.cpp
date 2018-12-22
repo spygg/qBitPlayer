@@ -271,8 +271,8 @@ bool BenCodeParser::getFileInfoSection(FILE_INFO *fileInfoSection)
     FILE_INFO fileInfo;
     //文件夹名字name
     fileInfo.szFolderName = infoDict.value("name").toString();
-    fileInfo.iPieceLength = infoDict.value("iece length").toLongLong();
-    fileInfo.bPieces = infoDict.value("pieces").toByteArray();
+    fileInfo.iPieceLength = infoDict.value("piece length").toLongLong();
+    fileInfo.bytesPieces = infoDict.value("pieces").toByteArray();
 
     if(infoDict.contains("files"))//多文件
     {

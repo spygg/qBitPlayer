@@ -6,13 +6,10 @@ Widget::Widget(QWidget *parent) :
     ui(new Ui::Widget)
 {
     ui->setupUi(this);
-    BenCodeParser bencode;
-    bencode.setTorrentFile("torrent/ubuntu.torrent");
 
-    TrakerCommunicate *com = new TrakerCommunicate;
-    com->setBenCodeParse(&bencode);
-    com->commnicateWithTracker();
-    bencode.getFileInfoSection(nullptr);
+    m_pDownloadMan = new DownloadManager(this);
+
+    m_pDownloadMan->setTorrentFile("torrent/ubuntu.torrent");
 }
 
 Widget::~Widget()

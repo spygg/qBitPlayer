@@ -10,6 +10,7 @@
 #include <QTimerEvent>
 #include "bencodeparser.h"
 #include "peerclient.h"
+#include "peerserver.h"
 
 //#include <QTcpSocket>
 
@@ -27,6 +28,7 @@ public:
     explicit TrakerCommunicate(QObject *parent = nullptr);
 
 signals:
+    void peerListUpdate(QList<PEER_ADDR> peerList);
 
 public slots:
 

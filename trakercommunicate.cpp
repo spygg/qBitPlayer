@@ -1,5 +1,5 @@
 #include "trakercommunicate.h"
-#include "peerserver.h"
+
 
 TrakerCommunicate::TrakerCommunicate(QObject *parent) : QObject(parent)
 {
@@ -28,7 +28,7 @@ void TrakerCommunicate::timerEvent(QTimerEvent *event)
 {
     if(event->timerId())
     {
-//        commnicateTracker();
+//        commnicateWithTracker();
     }
     else
     {
@@ -54,52 +54,18 @@ static inline void toNetworkData(quint32 num, char *data)
 
 void TrakerCommunicate::commnicateWithTracker()
 {
-//    QBitArray bitField(17);
 
-//    bitField[10] = 1;
-//    bitField[9] = 1;
-//    bitField[6] = 1;
+//    return;
+//    char szD[4] = {0};
+//    toNetworkData(33, szD);
+//    qToBigEndian<quint32>(33, szD);
 
+//    PEER_WIRE_MSG msg;
+//    msg.bytesPayload = (unsigned char*)malloc(sizeof(33));
+//    qToBigEndian<quint32>(33, msg.bytesPayload);
 
-//    qDebug() << bitField;
-//    int size = (bitField.size() + 7) / 8;
-//    QByteArray data(size, '\0');
-
-//    char message[] = {0, 0, 0, 1, 5};
-//    qToBigEndian<quint32>(bitField.size() + 1, &message[0]);
-
-//    //first byte of the bitfield corresponds to indices 0 - 7 from high bit to low bit
-//    //0000 0001 0000 0000
-//    //7654 3210
-//    // data[0]   data[1]
-//    //按位或
-//    unsigned char uc = 0;
-//    for(int i = 0; i < bitField.size(); i++)
-//    {
-//        if(bitField.testBit(i))
-//        {
-//            data[i / 8] = data.at(i / 8) | (unsigned char)(1 << (7 - i % 8));
-//        }
-//        // |= (bitField.testBit(i) << (7 - i % 8));
-//    }
-
-//    for(int i = 0; i < data.size(); i++)
-//    {
-//        qDebug() << (unsigned char)data.at(i);
-//    }
-    //qDebug() << data;
-    return;
-
-    char szD[4] = {0};
-    toNetworkData(33, szD);
-    qToBigEndian<quint32>(33, szD);
-
-    PEER_WIRE_MSG msg;
-    msg.bytesPayload = (unsigned char*)malloc(sizeof(33));
-    qToBigEndian<quint32>(33, msg.bytesPayload);
-
-    qDebug() << (int)szD[3] << (int)szD[2] << (int)szD[1] << (int)szD[0] << msg.bytesPayload[3];
-    return;
+//    qDebug() << (int)szD[3] << (int)szD[2] << (int)szD[1] << (int)szD[0] << msg.bytesPayload[3];
+//    return;
 
     QUrl url = QUrl(m_pBenCodePrase->getAnnounceUrl());
     QUrlQuery query(url);
@@ -271,6 +237,8 @@ void TrakerCommunicate::httpFinished(QNetworkReply* reply)
     {
         return;
     }
+
+    emit peerListUpdate(m_listPeers);
 
     for(int i = 0; i < 1; i++)
     {
